@@ -1,0 +1,11 @@
+version: '2'
+
+services:
+  graph:
+    build: .
+    image: graph:local
+    volumes:
+      - ./src:/data
+    ports:
+      - "3000:3000"
+    command: ["npm", "run", "dev-server"]
