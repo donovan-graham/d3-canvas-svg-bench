@@ -71,7 +71,7 @@ const yAxis = (context, y, height) => {
 
 
 
-app.get('/line', (req, res) => {
+app.get('/canvas', (req, res) => {
   const canvas = new Canvas(800, 800);
   const context = canvas.getContext('2d');
 
@@ -165,7 +165,7 @@ app.get('/svg', (req, res) => {
 
 
 
-app.get('/canvas', (req, res) => {
+app.get('/cavas-direct', (req, res) => {
   const canvas = new Canvas(400, 400);
   const context = canvas.getContext('2d');
 
