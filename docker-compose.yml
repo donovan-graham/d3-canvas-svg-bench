@@ -3,7 +3,7 @@ version: '2'
 services:
   graph:
     build: .
-    image: graph:local
+    image: graph-node7:local
     volumes:
       - ./src:/data
     ports:
@@ -11,7 +11,7 @@ services:
     command: ["npm", "run", "dev-server"]
 
   graph-prod:
-    image: graph:local
+    image: graph-node7:local
     volumes:
       - ./src:/data
     ports:

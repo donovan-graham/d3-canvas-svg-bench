@@ -1,6 +1,4 @@
-FROM node:6.9.0-slim
-
-RUN npm install -g yarn
+FROM node:7-slim
 
 RUN apt-get update && apt-get install -y \
   libcairo2-dev \
