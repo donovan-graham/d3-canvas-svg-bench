@@ -4,13 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node app.js",
-    "dev-server": "nodemon app.js",
+    "start": "NODE_ENV=production node app.js",
+    "dev-server": "NODE_ENV=development nodemon app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "body-parser": "^1.15.2",
     "canvas": "^1.6.2",
     "d3": "^4.3.0",
     "d3-selection-multi": "^1.0.0",
