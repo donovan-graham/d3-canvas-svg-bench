@@ -1,6 +1,8 @@
 const express = require('express');
 const fs = require('fs');
 const d3 = require('d3');
+require('d3-selection-multi');
+
 const jsdom = require("jsdom");
 
 const Canvas = require('canvas');
@@ -12,6 +14,10 @@ const data = JSON.parse(fs.readFileSync('./data.json', 'utf8')).map(d => ({
   date: parseTime(d.date),
   close: d.close,
 }));
+
+
+
+
 
 
 const xAxis = (context, x, height) => {
@@ -99,10 +105,6 @@ app.get('/canvas', (req, res) => {
   xAxis(context, x, height);
   yAxis(context, y, height);
 
-  context.beginPath();
-  line(data);
-  context.lineWidth = 1.5;
-  context.strokeStyle = "steelblue";
   context.stroke();
 
   // res.send('<img src="' + canvas.toDataURL() + '" />');
@@ -113,53 +115,253 @@ app.get('/canvas', (req, res) => {
 
 
 app.get('/svg', (req, res) => {
-  const document = jsdom.jsdom('<svg xmlns="http://www.w3.org/2000/svg" id="svg" width="800" height="800"></svg>');
+
+  const width = 800;
+  const height = 800;
+  const margin = { top: 20, right: 20, bottom: 30, left: 50 };
+  const graphWidth = width - margin.left - margin.right;
+  const graphHeight = height - margin.top - margin.bottom;
+
+  const tmpl = `
+    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" id="svg" width="${width}" height="${height}">
+      <g transform="translate(${margin.left},${margin.top})">
+          <g class="axis axis--x"></g>
+          <g class="axis axis--y"></g>
+          <path class="line line--area"></path>
+      </g>
+      <defs>
+        <pattern id="stripes" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45 0 0)">
+          <line stroke="red" strokeWidth="1px" y2="3"/>
+        </pattern>
+      </defs>
+    </svg>`;
+
+  const document = jsdom.jsdom(tmpl);
 
   const svg = d3.select(document.getElementById('svg'));
-  const margin = {top: 20, right: 20, bottom: 30, left: 50};
-  const width = svg.attr("width") - margin.left - margin.right;
-  const height = svg.attr("height") - margin.top - margin.bottom;
-  const g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+  const g = svg.select('g');
 
   const x = d3.scaleTime()
-      .rangeRound([0, width]);
+      .rangeRound([0, graphWidth]);
 
   const y = d3.scaleLinear()
-      .rangeRound([height, 0]);
+      .rangeRound([graphHeight, 0]);
 
-  const line = d3.line()
+  // const line = d3.line()
+  //     .x(d => x(d.date))
+  //     .y(d => y(d.close))
+  //     .curve(d3.curveStep);
+
+  var area = d3.area()
+      .curve(d3.curveStep)
       .x(d => x(d.date))
-      .y(d => y(d.close))
-      .curve(d3.curveStep);
+      .y0(graphHeight)
+      .y1(d => y(d.close));
 
   x.domain(d3.extent(data, d => d.date));
   y.domain(d3.extent(data, d => d.close));
 
-  g.append("g")
-      .attr("class", "axis axis--x")
-      .attr("transform", "translate(0," + height + ")")
-      .call(d3.axisBottom(x));
+  g.select('g.axis--x')
+    .attrs({
+      transform: `translate(0,${graphHeight})`,
+    })
+    .call(d3.axisBottom(x));
 
-  g.append("g")
-      .attr("class", "axis axis--y")
+  g.select('g.axis--y')
       .call(d3.axisLeft(y))
     .append("text")
-      .attr("fill", "#000")
-      .attr("transform", "rotate(-90)")
-      .attr("y", 6)
-      .attr("dy", "0.71em")
-      .style("text-anchor", "end")
+      .attrs({
+        fill: "#000",
+        transform: "rotate(-90)",
+        y: 6,
+        dy: "0.71em",
+        style: "text-anchor:end",
+      })
       .text("Price ($)");
 
-  g.append("path")
-      .datum(data)
-      .attr("class", "line")
-      .attr("style", "fill: none; stroke: steelblue; stroke-width: 1.5px;")
-      .attr("d", line);
+  g.select('path.line--area')
+    .datum(data)
+    .attrs({
+      fill: 'url(#stripes)',
+    })
+    .attr("d", area);
+    // .attr("style", "fill: lightblue; stroke: steelblue; stroke-width: 0.5px;stroke-left:none;")
+    // .attr("d", line);
 
   res.set({ 'Content-Type': 'image/svg+xml' });
   res.send(document.getElementById('svg').outerHTML);
 });
+
+
+
+
+
+app.get('/chart', (req, res) => {
+
+  // const parseTime = d3.timeParse("%d-%b-%y");
+  const parseTime = d3.timeParse("%Y-%m-%d");
+
+  const chartData = JSON.parse(fs.readFileSync('./debugData.json', 'utf8')).map(d => ({
+    date: parseTime(d.date),
+    savings: d.savings,
+    regularNominal: d.regularNominal,
+    regularReal: d.regularReal,
+    additionalNominal: d.additionalNominal,
+    additionalReal: d.additionalReal,
+  }));
+
+  // const maxY = d3.max([
+  //   d3.max(_chartData, d => d.savings),
+  //   d3.max(_chartData, d => d.regularNominal),
+  //   d3.max(_chartData, d => d.additionalNominal),
+  //   shortfallAmountAbsolute,
+  // ]);
+
+  //
+  // const zeroedData = area(Array(chartData.length).fill(0));
+
+  const width = 800;
+  const height = 800;
+  const margin = { top: 20, right: 20, bottom: 30, left: 50 };
+  const graphWidth = width - margin.left - margin.right;
+  const graphHeight = height - margin.top - margin.bottom;
+
+  const tmpl = `
+    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" id="svg" width="${width}" height="${height}">
+      <style>
+        .grid .tick {
+          stroke-opacity: 0.1;
+          shape-rendering: crispEdges;
+        }
+      </style>
+      <g transform="translate(${margin.left},${margin.top})">
+          <g class="axis axis--x"></g>
+          <g class="axis axis--y"></g>
+          <g class="grid grid--x"></g>
+          <g class="grid grid--y"></g>
+          <path class="line line--area"></path>
+      </g>
+      <defs>
+        <pattern id="stripes" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45 0 0)">
+          <line stroke="red" strokeWidth="1px" y2="3"/>
+        </pattern>
+      </defs>
+    </svg>`;
+
+  const document = jsdom.jsdom(tmpl);
+
+  const svg = d3.select(document.getElementById('svg'));
+  const g = svg.select('g');
+
+  var x = d3.scaleTime()
+      // .domain([new Date(2016, 08, 1), new Date(2083, 08, 2)])
+      .domain(d3.extent(chartData, d => d.date))
+      .range([0, graphWidth]);
+
+  // const x = d3.scaleTime()
+  //     .ticks(d3.time.years, 1)
+  //     // .domain([new Date(2000, 0, 1), new Date(2000, 0, 2)])
+  //     .rangeRound([0, graphWidth]);
+  //
+
+  const y = d3.scaleLinear()
+      .rangeRound([graphHeight, 0]);
+
+  // const line = d3.line()
+  //     .x(d => x(d.date))
+  //     .y(d => y(d.close))
+  //     .curve(d3.curveStep);
+
+
+  // x.domain(d3.extent(chartData, d => d.date));
+  y.domain(d3.extent(chartData, d => d.regularNominal));
+
+
+  const xTicks = d3.timeYear.every(10);
+  const xAxis = d3.axisBottom(x)
+    .ticks(xTicks)
+
+  const xGrid = d3.axisBottom(x)
+    .ticks(xTicks)
+    .tickSize(-graphHeight)
+    .tickFormat("");
+
+  g.select('g.axis--x')
+    .attrs({ transform: `translate(0,${graphHeight})` })
+    .call(xAxis);
+
+  g.select('g.grid--x')
+    .attrs({ transform: `translate(0,${graphHeight})` })
+    .call(xGrid)
+
+  const yTicks = 5;
+  const yAxis = d3.axisLeft(y)
+    .ticks(yTicks);
+
+  const yGrid = d3.axisLeft(y)
+    .ticks(yTicks)
+    .tickSize(-graphWidth)
+    .tickFormat("");
+
+  g.select('g.axis--y')
+    .call(yAxis)
+    .append("text")
+      .attrs({
+        fill: "#000",
+        transform: "rotate(-90)",
+        y: 10,
+        x: -10,
+        dy: "0.71em",
+        style: "text-anchor:end",
+      })
+      .text("Price ($)");
+
+
+  g.select('g.grid--y')
+    .attrs({ transform: `translate(0,0)` })
+    .call(yGrid)
+
+
+
+  const area = d3.area()
+      .curve(d3.curveStep)
+      .x(d => x(d.date))
+      .y0(graphHeight)
+      .y1(d => y(d.regularNominal));
+
+
+  // const line = d3.line()
+  //     .x(d => x(d.date))
+  //     .y(d => y(d.regularNominal))
+  //     .curve(d3.curveStep);
+
+
+  g.select('path.line--area')
+    .datum(chartData)
+    .attrs({
+      fill: 'url(#stripes)',
+    })
+    .attr("d", area);
+    //
+    // .attr("style", "fill: lightblue; stroke: steelblue; stroke-width: 0.5px;stroke-left:none;")
+    // .attr("d", line);
+
+  // const savingsData = chartData.map(x => x.savings);
+  // const regularData = chartData.map(x => x.regularNominal);
+  // const additionalData = chartData.map(x => x.additionalNominal);
+
+
+
+  // res.set({ 'Content-Type': 'image/svg+xml' });
+  // res.send(document.getElementById('svg').outerHTML);
+  res.send(document.documentElement.outerHTML);
+});
+
+
+
+
+
+
 
 
 
